@@ -1,3 +1,12 @@
+x-client-base: &client-base
+    build:
+      context: ./services/client
+      dockerfile: Dockerfile
+    volumes:
+      - ./input:/input
+    depends_on:
+      - server
+
 services:
   server:
     build:
@@ -8,89 +17,62 @@ services:
       - PYTHONUNBUFFERED=1
       - SERVER_HOST=server
       - SERVER_PORT=5678
+      - OUTPUT_FILE=/output/output.txt
     ports:
       - "5678:5678"
+    volumes:
+      - ./output:/output
 
   client_0:
-    build:
-      context: ./services/client
-      dockerfile: Dockerfile
+    <<: *client-base
     container_name: client_0
-    depends_on:
-      - server
     environment:
+      - SERVER_HOST=server
+      - SERVER_PORT=5678
       - AGENCY_ID=0
-      - SERVER_HOST=server
-      - SERVER_PORT=5678
-  
-  client_1:
-    build:
-      context: ./services/client
-      dockerfile: Dockerfile
-    container_name: client_1
-    depends_on:
-      - server
-    environment:
-      - AGENCY_ID=1
-      - SERVER_HOST=server
-      - SERVER_PORT=5678
+      - INPUT_FILE=/input/test.txt
 
-  client_2:
-    build:
-      context: ./services/client
-      dockerfile: Dockerfile
-    container_name: client_2
-    depends_on:
-      - server
+  client_1:
+    <<: *client-base
+    container_name: client_1
     environment:
-      - AGENCY_ID=2
       - SERVER_HOST=server
       - SERVER_PORT=5678
+      - AGENCY_ID=1
+      - INPUT_FILE=/input/test.txt
+    
+  client_2:
+    <<: *client-base
+    container_name: client_2
+    environment:
+      - SERVER_HOST=server
+      - SERVER_PORT=5678
+      - AGENCY_ID=2
+      - INPUT_FILE=/input/test.txt
 
   client_3:
-    build:
-      context: ./services/client
-      dockerfile: Dockerfile
+    <<: *client-base
     container_name: client_3
-    depends_on:
-      - server
     environment:
-      - AGENCY_ID=3
       - SERVER_HOST=server
       - SERVER_PORT=5678
+      - AGENCY_ID=3
+      - INPUT_FILE=/input/test.txt
 
   client_4:
-    build:
-      context: ./services/client
-      dockerfile: Dockerfile
+    <<: *client-base
     container_name: client_4
-    depends_on:
-      - server
     environment:
-      - AGENCY_ID=4
       - SERVER_HOST=server
       - SERVER_PORT=5678
+      - AGENCY_ID=4
+      - INPUT_FILE=/input/test.txt
 
   client_5:
-    build:
-      context: ./services/client
-      dockerfile: Dockerfile
+    <<: *client-base
     container_name: client_5
-    depends_on:
-      - server
     environment:
+      - SERVER_HOST=server
+      - SERVER_PORT=5678
       - AGENCY_ID=5
-      - SERVER_HOST=server
-      - SERVER_PORT=5678
-
-  client_6:
-    build:
-      context: ./services/client
-      dockerfile: Dockerfile
-    container_name: client_6
-    depends_on:
-      - server
-    environment:
-      - AGENCY_ID=6
-      - SERVER_HOST=server
-      - SERVER_PORT=5678
+      - INPUT_FILE=/input/test.txt

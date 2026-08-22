@@ -1,14 +1,20 @@
 import socket
 import logger
 import safe_socket
+import os
 
 _ECHO_SERVER_MESSAGE_SIZE = 1024
 
 
 class Server:
-    def __init__(self, server_host: str, server_port: int) -> None:
+    def __init__(self, server_host: str, server_port: int, output_file: str) -> None:
         self.server_host = server_host
         self.server_port = server_port
+        try:
+            self.output_file = os.open(output_file, os.O_WRONLY | os.O_CREAT | os.O_TRUNC)
+        except Exception as e:
+            logger.error("init-server", logger.LogResult.fail)
+            raise e
 
     def _handle_client(self, client_socket):
         action = "handle-client"
@@ -29,6 +35,7 @@ class Server:
                     return
                 message_amount += 1
                 safe_socket.send_all(client_socket, client_message)
+                os.write(self.output_file, (client_message + b'\n'))
         except Exception as e:
             logger.error(
                 action, logger.LogResult.fail, "messages-amount", message_amount
