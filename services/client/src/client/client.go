@@ -95,7 +95,7 @@ func (client *Client) Run() error {
 			return err
 		}
 
-		if string(responseBuffer) == clientMessage {
+		if string(responseBuffer) != clientMessage {
 			logger.Error("check-response", logger.Fail, messageArgs...)
 			return err
 		}
