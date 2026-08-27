@@ -4,8 +4,20 @@ import socket
 
 
 def recv_all(socket: socket.socket, size):
-    return socket.recv(size)
+    data = b""
+    while len(data) < size:
+        chunk = socket.recv(size - len(data))
+        if chunk == b'':
+            raise RuntimeError("socket connection broken")
+        data += chunk
+    return data
 
 
 def send_all(socket: socket.socket, bytes):
-    return socket.send(bytes)
+    total_sent = 0
+    while total_sent < len(bytes):
+        sent = socket.send(bytes[total_sent:])
+        if sent <= 0:
+            raise RuntimeError("socket connection broken")
+        total_sent += sent
+    return total_sent
