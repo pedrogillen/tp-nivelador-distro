@@ -2,31 +2,46 @@ package client
 
 import (
 	"bufio"
+	"fmt"
 	"net"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/7574-sistemas-distribuidos/tp-nivelador/src/logger"
-	"github.com/7574-sistemas-distribuidos/tp-nivelador/src/safe_socket"
+	"github.com/7574-sistemas-distribuidos/tp-nivelador/src/protocol"
 )
 
-const CONNECTION_ATTEMPTS_MAX = 3
+const CONNECTION_ATTEMPTS_MAX = 6
 const CONNECTION_ATTEMPS_DELAY_MS = 200
 
-const ECHO_CLIENT_BUFFER_SIZE = 512
-const ECHO_CLIENT_MESSAGE_AMOUNT = 3
-const ECHO_CLIENT_MESSAGE_DELAY_MS = 1000
+const TOTAL_BET_COMPONENTS = 5
+const NAME_INDEX = 0
+const SURNAME_INDEX = 1
+const ID_INDEX = 2
+const DATE_INDEX = 3
+const BET_NUMBER_INDEX = 4
 
 type ClientConfig struct {
 	ServerHost string
 	ServerPort string
 	AgencyId   string
 	InputFile  string
+	OutputFile string
 }
 
 type Client struct {
 	conn   net.Conn
 	config ClientConfig
+}
+
+type Bet struct {
+	Name      string
+	Surname   string
+	Id        int
+	Date      string
+	BetNumber int
+	AgencyId  int
 }
 
 func NewClient(config ClientConfig) (*Client, error) {
@@ -65,48 +80,83 @@ func (client *Client) Run() error {
 	const mainAction = "test-echo-server"
 	defer client.conn.Close()
 
+	agencyIdInt, err := strconv.Atoi(client.config.AgencyId)
+	if err != nil {
+		logger.Error("agency-id-parse", logger.Fail, "err", err)
+		return err
+	}
+
+	err = client.SendBetLines(agencyIdInt, mainAction)
+	if err != nil {
+		return err
+	}
+
+	err = client.ReceiveBetWinners(agencyIdInt)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (client *Client) ReceiveBetWinners(agencyIdInt int) error {
+	outputFile, err := os.Create(client.config.OutputFile)
+	if err != nil {
+		logger.Error("create-output-file", logger.Fail)
+		return err
+	}
+	defer outputFile.Close()
+
+	bet_winner, err := protocol.ReceiveBetWinner(client.conn)
+	if err != nil {
+		return err
+	}
+
+	for bet_winner != nil {
+		// Ignore bets that are not from the agency
+		if bet_winner.AgencyId == agencyIdInt {
+			winner_line := fmt.Sprintf("%s,%s,%d,%s,%d", bet_winner.Name, bet_winner.Surname, bet_winner.Id, bet_winner.Date, bet_winner.BetNumber)
+
+			outputFile.WriteString(winner_line + "\n")
+			logger.Info("recv-winner", logger.Success)
+		}
+		bet_winner, err = protocol.ReceiveBetWinner(client.conn)
+		if err != nil {
+			return err
+		}
+		// logger.Info("recv-bet-len", logger.InProgress, "bet-len", bet_len_int)
+	}
+	return nil
+}
+
+func (client *Client) SendBetLines(agencyIdInt int, mainAction string) error {
 	file, err := os.Open(client.config.InputFile)
 	if err != nil {
 		logger.Error("open-input-file", logger.Fail)
 		return err
 	}
-
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
-
 	messageId := 0
 
 	for scanner.Scan() {
-		messageArgs := []any{"agency-id", client.config.AgencyId, "message-id", messageId}
-		logger.Info(mainAction, logger.InProgress, messageArgs...)
+		// messageArgs := []any{"agency-id", client.config.AgencyId, "message-id", messageId}
+		// logger.Info(mainAction, logger.InProgress, messageArgs...)
 
-		clientMessage := scanner.Text()
-		messageId++
-
-		if err := safe_socket.SendAll(client.conn, []byte(clientMessage)); err != nil {
-			logger.Error("send-message", logger.Fail, messageArgs...)
-			return err
-		}
-
-		responseBuffer, err := safe_socket.RecvAll(client.conn, ECHO_CLIENT_BUFFER_SIZE)
+		line := scanner.Text()
+		err := protocol.SendBetLine(line, client.conn, agencyIdInt)
 		if err != nil {
-			logger.Error("recv-response", logger.Fail, messageArgs...)
+			logger.Error("send-bet-line", logger.Fail)
 			return err
 		}
-
-		if string(responseBuffer) != clientMessage {
-			logger.Error("check-response", logger.Fail, messageArgs...)
-			return err
-		}
-
-		time.Sleep(ECHO_CLIENT_MESSAGE_DELAY_MS * time.Millisecond)
+		messageId++
 	}
 	if err := scanner.Err(); err != nil {
 		logger.Error("read-file", logger.Fail)
 		return err
 	}
-	logger.Info(mainAction, logger.Success, "agency-id", client.config.AgencyId)
-
+	protocol.SendSeparator(client.conn)
+	logger.Info(mainAction, logger.Success, "agency-id", client.config.AgencyId, "message-count", messageId)
 	return nil
 }

@@ -1,44 +1,36 @@
 import socket
 import logger
 import safe_socket
-import os
-
-_ECHO_SERVER_MESSAGE_SIZE = 1024
-
+from lottery import Lottery
+import protocol
 
 class Server:
     def __init__(self, server_host: str, server_port: int, output_file: str) -> None:
         self.server_host = server_host
         self.server_port = server_port
-        try:
-            self.output_file = os.open(output_file, os.O_WRONLY | os.O_CREAT | os.O_TRUNC)
-        except Exception as e:
-            logger.error("init-server", logger.LogResult.fail)
-            raise e
+        self.lottery = Lottery(output_file)
 
     def _handle_client(self, client_socket):
         action = "handle-client"
         message_amount = 0
         try:
-            logger.info(action, logger.LogResult.in_progress)
-            while True:
-                client_message = safe_socket.recv_all(
-                    client_socket, _ECHO_SERVER_MESSAGE_SIZE
-                )
-                if not client_message:
-                    logger.info(
-                        action,
-                        logger.LogResult.success,
-                        "messages-amount",
-                        message_amount,
-                    )
-                    return
+            logger.info("read-bet-lines", logger.LogResult.in_progress)
+            bet_line = protocol.read_bet_line(client_socket)
+            while bet_line != b'':
+                bet = protocol.deserialize_bet_line(bet_line)
+                self.lottery.store_bets([bet])
+                bet_line = protocol.read_bet_line(client_socket)
                 message_amount += 1
-                safe_socket.send_all(client_socket, client_message)
-                os.write(self.output_file, (client_message + b'\n'))
+            logger.info("read-bet-lines", logger.LogResult.success, "messages-amount", message_amount)
+            logger.info("check-winners", logger.LogResult.in_progress)
+            for bet in self.lottery.load_bets():
+                # logger.info("check-winners", logger.LogResult.in_progress, "current", bet.first_name, "number", bet.number)
+                if self.lottery.has_won(bet):
+                    protocol.send_winner_line(client_socket, bet)
+            protocol.send_separator(client_socket)
         except Exception as e:
             logger.error(
-                action, logger.LogResult.fail, "messages-amount", message_amount
+                action, logger.LogResult.fail, "messages-amount", message_amount, "error", e
             )
             raise e
 
