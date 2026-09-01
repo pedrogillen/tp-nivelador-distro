@@ -20,7 +20,7 @@ func RecvAll(socket io.Reader, size int) ([]byte, error) {
 	buff := make([]byte, size)
 	received := 0
 	for received < size {
-		n, err := socket.Read(buff)
+		n, err := socket.Read(buff[received:])
 		if err != nil {
 			return nil, err
 		}

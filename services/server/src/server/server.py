@@ -67,6 +67,7 @@ class Server:
                     bets.append(bet)
                 with self.lottery_lock:
                     self.lottery.store_bets(bets)
+                protocol.send_ack(client_socket)
                 bet_batch = protocol.read_bet_batch(client_socket, agency_id)
                 message_amount += 1
             logger.info("read-bet-lines", logger.LogResult.success, "messages-amount", message_amount)

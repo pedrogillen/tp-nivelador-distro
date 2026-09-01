@@ -229,5 +229,21 @@ func SendBatchedLines(conn net.Conn, lines []string, agencyId int) error {
 		logger.Error("send-batched-lines", logger.Fail, "error", err)
 		return err
 	}
+	err = ReceiveAck(conn)
+	return nil
+}
+
+func ReceiveAck(conn net.Conn) error {
+	ack_bytes, err := safe_socket.RecvAll(conn, 4)
+	if err != nil {
+		logger.Error("recv-ack", logger.Fail, "error", err)
+		return err
+	}
+
+	ack_int := int(binary.BigEndian.Uint32(ack_bytes))
+	if ack_int != 1 {
+		logger.Error("recv-ack", logger.Fail, "invalid-ack", ack_int)
+		return fmt.Errorf("invalid ack: %d", ack_int)
+	}
 	return nil
 }

@@ -111,3 +111,12 @@ def read_bet_batch(client_socket, agency_id):
     except Exception as e:
         logger.error(action, logger.LogResult.fail)
         raise e
+
+def send_ack(client_socket):
+    action = "send-ack"
+    try:
+        # logger.info(action, logger.LogResult.in_progress)
+        safe_socket.send_all(client_socket, b"\x00\x00\x00\x01")
+        # logger.info(action, logger.LogResult.success)
+    except Exception as e:
+        logger.error(action, logger.LogResult.fail, "error", e)
