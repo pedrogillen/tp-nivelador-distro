@@ -24,7 +24,6 @@ type Bet struct {
 	Id        int
 	Date      string
 	BetNumber int
-	AgencyId  int
 }
 
 func SendSeparator(conn net.Conn) error {
@@ -32,6 +31,16 @@ func SendSeparator(conn net.Conn) error {
 	err := safe_socket.SendAll(conn, separator)
 	if err != nil {
 		logger.Error("send-separator", logger.Fail, "error", err)
+		return err
+	}
+	return nil
+}
+
+func SendAgencyId(conn net.Conn, agencyId int) error {
+	agencyIdBytes := []byte{byte(agencyId)}
+	err := safe_socket.SendAll(conn, agencyIdBytes)
+	if err != nil {
+		logger.Error("send-agency-id", logger.Fail, "error", err)
 		return err
 	}
 	return nil
@@ -71,12 +80,10 @@ func SerializeBetLine(line string, agencyId int) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	s_agency_id := SerializeAgencyId(agencyId)
 	data_packet := append(s_name, s_surname...)
 	data_packet = append(data_packet, s_id...)
 	data_packet = append(data_packet, s_date...)
 	data_packet = append(data_packet, s_bet_number...)
-	data_packet = append(data_packet, s_agency_id...)
 	data_packet = SerializeTotalPacketSize(data_packet)
 	return data_packet, nil
 }
@@ -139,10 +146,6 @@ func DeserializeBet(data []byte) (*Bet, error) {
 	if err != nil {
 		return nil, err
 	}
-	agency_id, err := DeserializeAgencyId(data, &pointer)
-	if err != nil {
-		return nil, err
-	}
 
 	bet := Bet{
 		Name:      name,
@@ -150,7 +153,6 @@ func DeserializeBet(data []byte) (*Bet, error) {
 		Id:        id,
 		Date:      date,
 		BetNumber: bet_number,
-		AgencyId:  agency_id,
 	}
 	return &bet, nil
 }

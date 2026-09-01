@@ -7,11 +7,12 @@ import server
 SERVER_HOST = os.environ["SERVER_HOST"]
 SERVER_PORT = int(os.environ["SERVER_PORT"])
 OUTPUT_FILE = os.environ["OUTPUT_FILE"]
+AGENCY_QUORUM_MIN = int(os.environ["AGENCY_QUORUM_MIN"])
 
 def main():
     logger.init()
     try:
-        s = server.Server(SERVER_HOST, SERVER_PORT, OUTPUT_FILE)
+        s = server.Server(SERVER_HOST, SERVER_PORT, OUTPUT_FILE, AGENCY_QUORUM_MIN)
         s.run()
     except Exception as e:
         logger.error("server-run", logger.LogResult.fail, "err", e)

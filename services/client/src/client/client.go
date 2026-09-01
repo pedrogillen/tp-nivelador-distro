@@ -87,6 +87,11 @@ func (client *Client) Run() error {
 		return err
 	}
 
+	err = protocol.SendAgencyId(client.conn, agencyIdInt)
+	if err != nil {
+		return err
+	}
+
 	err = client.SendBetLines(agencyIdInt, mainAction)
 	if err != nil {
 		return err
@@ -114,13 +119,10 @@ func (client *Client) ReceiveBetWinners(agencyIdInt int) error {
 	}
 
 	for bet_winner != nil {
-		// Ignore bets that are not from the agency
-		if bet_winner.AgencyId == agencyIdInt {
-			winner_line := fmt.Sprintf("%s,%s,%d,%s,%d", bet_winner.Name, bet_winner.Surname, bet_winner.Id, bet_winner.Date, bet_winner.BetNumber)
+		winner_line := fmt.Sprintf("%s,%s,%d,%s,%d", bet_winner.Name, bet_winner.Surname, bet_winner.Id, bet_winner.Date, bet_winner.BetNumber)
 
-			outputFile.WriteString(winner_line + "\n")
-			logger.Info("recv-winner", logger.Success)
-		}
+		outputFile.WriteString(winner_line + "\n")
+		logger.Info("recv-winner", logger.Success)
 		bet_winner, err = protocol.ReceiveBetWinner(client.conn)
 		if err != nil {
 			return err
