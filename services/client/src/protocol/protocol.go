@@ -211,3 +211,21 @@ func ReceiveBetWinner(conn net.Conn) (*Bet, error) {
 	}
 	return bet, nil
 }
+
+func SendBatchedLines(conn net.Conn, lines []string, agencyId int) error {
+	total_packet := make([]byte, 0)
+	for _, line := range lines {
+		serialized_line, err := SerializeBetLine(line, agencyId)
+		if err != nil {
+			return err
+		}
+		total_packet = append(total_packet, serialized_line...)
+	}
+	serialized_total_packet := SerializeTotalPacketSize(total_packet)
+	err := safe_socket.SendAll(conn, serialized_total_packet)
+	if err != nil {
+		logger.Error("send-batched-lines", logger.Fail, "error", err)
+		return err
+	}
+	return nil
+}

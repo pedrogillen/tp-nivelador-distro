@@ -4,4 +4,5 @@ from .protocol import (
     serialize_bet,
     send_winner_line,
     send_separator,
+    read_bet_batch,
 )

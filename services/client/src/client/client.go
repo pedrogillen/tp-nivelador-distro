@@ -28,6 +28,7 @@ type ClientConfig struct {
 	AgencyId   string
 	InputFile  string
 	OutputFile string
+	BatchSize  int
 }
 
 type Client struct {
@@ -129,6 +130,38 @@ func (client *Client) ReceiveBetWinners(agencyIdInt int) error {
 	return nil
 }
 
+// func (client *Client) SendBetLines(agencyIdInt int, mainAction string) error {
+// 	file, err := os.Open(client.config.InputFile)
+// 	if err != nil {
+// 		logger.Error("open-input-file", logger.Fail)
+// 		return err
+// 	}
+// 	defer file.Close()
+
+// 	scanner := bufio.NewScanner(file)
+// 	messageId := 0
+
+// 	for scanner.Scan() {
+// 		// messageArgs := []any{"agency-id", client.config.AgencyId, "message-id", messageId}
+// 		// logger.Info(mainAction, logger.InProgress, messageArgs...)
+
+// 		line := scanner.Text()
+// 		err := protocol.SendBetLine(line, client.conn, agencyIdInt)
+// 		if err != nil {
+// 			logger.Error("send-bet-line", logger.Fail)
+// 			return err
+// 		}
+// 		messageId++
+// 	}
+// 	if err := scanner.Err(); err != nil {
+// 		logger.Error("read-file", logger.Fail)
+// 		return err
+// 	}
+// 	protocol.SendSeparator(client.conn)
+// 	logger.Info(mainAction, logger.Success, "agency-id", client.config.AgencyId, "message-count", messageId)
+// 	return nil
+// }
+
 func (client *Client) SendBetLines(agencyIdInt int, mainAction string) error {
 	file, err := os.Open(client.config.InputFile)
 	if err != nil {
@@ -139,22 +172,34 @@ func (client *Client) SendBetLines(agencyIdInt int, mainAction string) error {
 
 	scanner := bufio.NewScanner(file)
 	messageId := 0
-
+	batchedLines := []string{}
+	counter := 0
 	for scanner.Scan() {
 		// messageArgs := []any{"agency-id", client.config.AgencyId, "message-id", messageId}
 		// logger.Info(mainAction, logger.InProgress, messageArgs...)
-
-		line := scanner.Text()
-		err := protocol.SendBetLine(line, client.conn, agencyIdInt)
-		if err != nil {
-			logger.Error("send-bet-line", logger.Fail)
-			return err
-		}
+		batchedLines = append(batchedLines, scanner.Text())
 		messageId++
+		counter++
+		counter = counter % client.config.BatchSize
+		if counter == 0 {
+			err := protocol.SendBatchedLines(client.conn, batchedLines, agencyIdInt)
+			if err != nil {
+				logger.Error("send-batched-lines", logger.Fail, "err", err)
+				return err
+			}
+			batchedLines = []string{}
+		}
 	}
 	if err := scanner.Err(); err != nil {
 		logger.Error("read-file", logger.Fail)
 		return err
+	}
+	if len(batchedLines) > 0 {
+		err := protocol.SendBatchedLines(client.conn, batchedLines, agencyIdInt)
+		if err != nil {
+			logger.Error("send-batched-lines", logger.Fail, "err", err)
+			return err
+		}
 	}
 	protocol.SendSeparator(client.conn)
 	logger.Info(mainAction, logger.Success, "agency-id", client.config.AgencyId, "message-count", messageId)

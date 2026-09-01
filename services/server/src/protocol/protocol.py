@@ -11,7 +11,7 @@ def read_bet_line(client_socket):
     action = "read-bet-line"
     try:
         # logger.info(action, logger.LogResult.in_progress)
-        bet_line_size_bytes = safe_socket.recv_all(client_socket, TOTAL_LENGTH_BYTES)
+        bet_line_size_bytes = safe_socket.recv_all(client_socket, 4)
         if bet_line_size_bytes == b"" or bet_line_size_bytes == b"\x00\x00\x00\x00":
             return b""
         bet_line_size = int.from_bytes(bytes=bet_line_size_bytes, byteorder="big")
@@ -28,7 +28,6 @@ def deserialize_bet_line(bet_line_bytes):
     client_id = int.from_bytes(bet_line_bytes[pointer : pointer + ID_LENGTH], byteorder="big")
     pointer += ID_LENGTH
     date, pointer = deserialize_string(bet_line_bytes, pointer)
-    pointer += BET_NUMBER_LENGTH
     bet_number = int.from_bytes(bet_line_bytes[pointer : pointer + BET_NUMBER_LENGTH], byteorder="big")
     pointer += BET_NUMBER_LENGTH
     agency_id = int.from_bytes(bet_line_bytes[pointer : pointer + AGENCY_ID_LENGTH], byteorder="big")
@@ -51,14 +50,7 @@ def serialize_bet(bet: Bet) -> bytes:
         agency_id_bytes = bet.agency_id.to_bytes(AGENCY_ID_LENGTH, byteorder="big")
         document_bytes = bet.document.to_bytes(ID_LENGTH, byteorder="big")
         number_bytes = bet.number.to_bytes(BET_NUMBER_LENGTH, byteorder="big")
-        serialized_bet = (
-            + first_name_bytes
-            + last_name_bytes
-            + document_bytes
-            + birthdate_bytes
-            + number_bytes
-            + agency_id_bytes
-        )
+        serialized_bet = first_name_bytes + last_name_bytes + document_bytes + birthdate_bytes + number_bytes + agency_id_bytes
         total_length_bytes = len(serialized_bet).to_bytes(TOTAL_LENGTH_BYTES, byteorder="big")
         serialized_bet = total_length_bytes + serialized_bet
         # logger.info(action, logger.LogResult.success)
@@ -84,3 +76,26 @@ def send_winner_line(client_socket, bet):
 
 def send_separator(client_socket):
     safe_socket.send_all(client_socket, b"\x00\x00\x00\x00")
+
+def read_bet_batch(client_socket):
+    action = "read-bet-batch"
+    try:
+        # logger.info(action, logger.LogResult.in_progress)
+        bet_batch_size_bytes = safe_socket.recv_all(client_socket, TOTAL_LENGTH_BYTES)
+        if bet_batch_size_bytes == b"" or bet_batch_size_bytes == b"\x00\x00\x00\x00":
+            return []
+        bet_batch_size = int.from_bytes(bytes=bet_batch_size_bytes, byteorder="big")
+        bet_batch = []
+        whole_bets = safe_socket.recv_all(client_socket, bet_batch_size)
+        pointer = 0
+        while pointer < len(whole_bets):
+            bet_line_size = int.from_bytes(whole_bets[pointer:pointer + TOTAL_LENGTH_BYTES], byteorder="big")
+            pointer += TOTAL_LENGTH_BYTES
+            bet_line_bytes = whole_bets[pointer:pointer + bet_line_size]
+            pointer += bet_line_size
+            deserialized_bet = deserialize_bet_line(bet_line_bytes)
+            bet_batch.append(deserialized_bet)
+        return bet_batch
+    except Exception as e:
+        logger.error(action, logger.LogResult.fail)
+        raise e

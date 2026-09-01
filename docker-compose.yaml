@@ -33,6 +33,7 @@ services:
       - AGENCY_ID=0
       - INPUT_FILE=/input/input-0.csv
       - OUTPUT_FILE=/output/output-0.csv
+      - BATCH_SIZE=32
 
   client_1:
     <<: *client-base
@@ -43,6 +44,7 @@ services:
       - AGENCY_ID=1
       - INPUT_FILE=/input/input-1.csv
       - OUTPUT_FILE=/output/output-1.csv
+      - BATCH_SIZE=32
 
     
   client_2:
@@ -54,6 +56,7 @@ services:
       - AGENCY_ID=2
       - INPUT_FILE=/input/input-2.csv
       - OUTPUT_FILE=/output/output-2.csv
+      - BATCH_SIZE=32
 
 
   client_3:
@@ -65,6 +68,9 @@ services:
       - AGENCY_ID=3
       - INPUT_FILE=/input/input-3.csv
       - OUTPUT_FILE=/output/output-3.csv
+      - BATCH_SIZE=32
+
+
 
   client_4:
     <<: *client-base
@@ -75,6 +81,8 @@ services:
       - AGENCY_ID=4
       - INPUT_FILE=/input/input-4.csv
       - OUTPUT_FILE=/output/output-4.csv
+      - BATCH_SIZE=32
+
 
   client_5:
     <<: *client-base
@@ -85,3 +93,4 @@ services:
       - AGENCY_ID=5
       - INPUT_FILE=/input/input-5.csv
       - OUTPUT_FILE=/output/output-5.csv
+      - BATCH_SIZE=32
